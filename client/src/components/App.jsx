@@ -1,29 +1,47 @@
 import axios from 'axios';
-import API_KEY from '../config.js';
-
 import React from 'react';
 const { useState, useEffect } = React;
+import { ReactSession } from 'react-client-session';
+import styled from 'styled-components';
 
 import Overview from './overview/Overview.jsx';
 import RelatedItems from './related-items/RelatedItems.jsx';
+import Outfit from './related-items/Outfit.jsx';
 import QuestionsAnswers from './questions-answers/QuestionsAnswers.jsx';
 import RatingsReviews from './ratings-reviews/RatingsReviews.jsx';
+import Header from './Header.jsx'
+
+import API_KEY from '../config.js';
+const API_URL = 'https://app-hrsei-api.herokuapp.com/api/fec2/hr-rfp';
+
+ReactSession.setStoreType('localStorage');
+
+const AppStyle = styled.div`
+  background-color: ${({ isDarkMode }) => isDarkMode ? '#171717' : 'white'};
+  color: ${({ isDarkMode }) => isDarkMode ? 'white' : 'black'};
+  transition: 300ms;
+`;
 
 const App = () => {
-  const API_URL = 'https://app-hrsei-api.herokuapp.com/api/fec2/hr-rfp';
+  const [outfit, setOutfit] = useState(ReactSession.get('outfit') || []);
+  const [currentProduct, setCurrentProduct] = useState(null);
+  const [currentProductStyle, setCurrentProductStyle] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  const [ currentProduct, setCurrentProduct ] = useState(null);
-  const [ currentProductStyle, setCurrentProductStyle ] = useState(null);
-
-  useEffect(async () => {
-    await request('/products', 'GET', {}, (error, products) => {
-      if (!error) {
-        setCurrentProduct(products[0]);
-      } else {
+  useEffect(() => {
+    request('/products/?count=10', 'GET', {}, (error, products) => {
+      if (error) {
         console.error(error);
+      } else {
+        setCurrentProduct(products[2]);
       }
     });
   }, []);
+
+  useEffect(() => {
+    setReady(currentProduct !== null);
+  }, [currentProduct]);
 
   const request = async (path, method, body = {}, callback = () => {}) => {
     try {
@@ -48,14 +66,17 @@ const App = () => {
     }
   };
 
-  return (
-    <>
-      <Overview currentProduct={currentProduct} currentProductStyle={currentProductStyle} setCurrentProductStyle={setCurrentProductStyle} request={request} />
-      <RelatedItems currentProduct={currentProduct} currentProductStyle={currentProductStyle} request={request} />
-      <QuestionsAnswers currentProduct={currentProduct} request={request} />
-      <RatingsReviews currentProduct={currentProduct} request={request} />
-    </>
+  return !ready ? null : (
+    <AppStyle isDarkMode={isDarkMode}>
+      <Header isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}/>
+      <Overview currentProduct={currentProduct} currentProductStyle={currentProductStyle} setCurrentProductStyle={setCurrentProductStyle} outfit={outfit} setOutfit={setOutfit} request={request} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+      <RelatedItems currentProduct={currentProduct} setCurrentProduct={setCurrentProduct} currentProductStyle={currentProductStyle} outfit={outfit} setOutfit={setOutfit} request={request} isDarkMode={isDarkMode} />
+      <Outfit outfit={outfit} setOutfit={setOutfit} currentProduct={currentProduct} setCurrentProduct={setCurrentProduct} request={request} isDarkMode={isDarkMode} />
+      <QuestionsAnswers currentProduct={currentProduct} request={request} isDarkMode={isDarkMode} />
+      <RatingsReviews currentProduct={currentProduct} request={request} isDarkMode={isDarkMode} />
+    </AppStyle>
   );
+
 };
 
 export default App;
